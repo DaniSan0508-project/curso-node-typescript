@@ -12,7 +12,8 @@ locationsRoutes.post("/",async (req,res)=>{
         latitude,
         longitude,
         city,
-        uf
+        uf,
+        items
     } = req.body;
 
     const location = {
@@ -23,12 +24,28 @@ locationsRoutes.post("/",async (req,res)=>{
         latitude,
         longitude,
         city,
-        uf,
+        uf
     }
     try{
         const newsId = await knex('locations').insert(location);
+        const locationId = newsId[0];
+
+        const locationItens = items
+            .map((item_id: number)=>{
+                return {
+                    item_id,
+                    location_id: locationId
+                }
+            })
         
-        console.log(newsId)
+        
+
+        await knex('location_items').insert(locationItens)
+
+        return res.json({
+            id: locationId,
+            ...location
+        })
     }catch(error){
         console.log(error)
     }
