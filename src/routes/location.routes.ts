@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { json, Router } from 'express';
 import knex from '../database/connection';
 
 const locationsRoutes = Router();
@@ -26,31 +26,36 @@ locationsRoutes.post("/",async (req,res)=>{
         city,
         uf
     }
-    try{
-        const newsId = await knex('locations').insert(location);
-        const locationId = newsId[0];
+    
+    const transaction = await knex.transaction();
 
-        const locationItens = items
-            .map((item_id: number)=>{
-                return {
-                    item_id,
-                    location_id: locationId
-                }
-            })
-        
-        
+    const newIds = await transaction('locations').insert(location);
 
-        await knex('location_items').insert(locationItens)
+    const location_id = newIds[0];
 
-        return res.json({
-            id: locationId,
-            ...location
-        })
-    }catch(error){
-        console.log(error)
-    }
-  
+    const locationItems = items
+        .map((item_id: number) => {
+            const selectedItem = transaction('items').where('id', item_id).first();
 
-})
+            if (!selectedItem) {
+                transaction.rollback();
+                return res.status(400).json({ message: 'Item not found.' });
+            }
+
+            return {
+                item_id,
+                location_id
+            }
+        });
+
+    await transaction('location_items').insert(locationItems);
+
+    await transaction.commit();
+
+    return res.json({
+        id: location_id,
+        ...location
+    });
+});
 
 export default locationsRoutes;
