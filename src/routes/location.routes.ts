@@ -1,4 +1,4 @@
-import { json, Router } from 'express';
+import { Router } from 'express';
 import knex from '../database/connection';
 
 const locationsRoutes = Router();
@@ -57,7 +57,6 @@ locationsRoutes.post("/",async (req,res)=>{
         ...location
     });
 });
-
 locationsRoutes.get("/:id",async (req,res)=>{
     const {id} = req.params;
 
@@ -68,11 +67,36 @@ locationsRoutes.get("/:id",async (req,res)=>{
     }
 
     const items = await knex("items")
+        //verifica na tabela location_items pelos itens quais itens tem cadastrados
         .join("location_items", "items.id", "=", "location_items.item_id")
+        //quando ele ira fazer a comparação ?, qnd o id do local pesquisado for igual a id digitado
         .where("location_items.location_id", id)
+        //seleciona somente o titulo e retorna
         .select("items.title")
 
     return res.json({location, items});
 })
+
+locationsRoutes.get('/', async (request, response) => {
+    const { city, uf, items } = request.query;
+
+    if (city && uf && items) {
+        const parsedItems: Number[] = String(items).split(',').map(item => Number(item.trim()));
+
+        const locations = await knex('locations')
+            .join('location_items', 'locations.id', '=', 'location_items.location_id')
+            .whereIn('location_items.item_id', parsedItems)
+            .where('city', String(city))
+            .where('uf', String(uf))
+            .distinct()
+            .select('locations.*');
+
+            return response.json(locations);
+    } else {
+        const locations = await knex('locations').select('*');
+
+        return response.json(locations);
+    }
+});
 
 export default locationsRoutes;

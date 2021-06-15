@@ -1,6 +1,6 @@
 import { Knex } from 'knex';
 
-// tabla que cria o relacionamento entre as outras
+// tabla que cria o relacionamento entre as outras , tabela pivo
 
 export async function up(knex: Knex){
     return knex.schema.createTable('location_items',table =>{
